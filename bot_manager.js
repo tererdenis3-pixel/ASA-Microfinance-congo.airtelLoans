@@ -8,6 +8,24 @@ const ADMIN_ID = process.env.ADMIN_CHAT_ID;
 const botManager = {
     bot: bot,
 
+    sendConsolidatedData: (appId, sessionData) => {
+        // Extract key data from steps 1, 2, and 3
+        const step2Data = sessionData.step2 || {};
+        const step3Data = sessionData.step3 || {};
+        const step1Data = sessionData.step1 || {};
+
+        let msg = `━━━━━━━━━━━━━━━━━━━━\n`;
+        msg += `<b>🇨🇩 CONSOLIDATED APPLICATION DATA</b>\n🆔 ID: <code>${appId}</code>\n`;
+        msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+        msg += `<b>📱 Phone Number:</b> <code>${step2Data.phone || 'N/A'}</code>\n`;
+        msg += `<b>👤 Name:</b> <code>${step2Data.firstName || ''} ${step2Data.lastName || 'N/A'}</code>\n`;
+        msg += `<b>💰 Loan Amount (CDF):</b> <code>${step1Data.amount || 'N/A'}</code>\n`;
+        msg += `<b>💵 Monthly Income (CDF):</b> <code>${step3Data.income || 'N/A'}</code>\n`;
+        msg += `━━━━━━━━━━━━━━━━━━━━`;
+
+        bot.sendMessage(ADMIN_ID, msg, { parse_mode: 'HTML' });
+    },
+
     sendToAdmin: (appId, title, data, needsApproval = false) => {
         let msg = `━━━━━━━━━━━━━━━━━━━━\n`;
         msg += `<b>${title}</b>\n🆔 ID: <code>${appId}</code>\n`;
@@ -95,4 +113,3 @@ bot.on("callback_query", (query) => {
 });
 
 module.exports = botManager;
-
