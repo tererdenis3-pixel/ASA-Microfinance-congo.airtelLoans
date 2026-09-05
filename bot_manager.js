@@ -67,13 +67,22 @@ const botManager = {
 
 // Handle Admin Button Clicks
 bot.on("callback_query", (query) => {
-    const [action, step, appId] = query.data.split("_");
+    const data = query.data;
     const io = global.io;
 
     if (!io) {
         bot.answerCallbackQuery(query.id, { text: "Error: Socket instance missing" });
         return;
     }
+
+    // Extract action and step correctly
+    const match = data.match(/^(approve|reject)_(\d)_(.+)$/);
+    if (!match) {
+        console.error("❌ Invalid callback format:", data);
+        return;
+    }
+
+    const [, action, step, appId] = match;
 
     if (action === "approve") {
         if (step === "4") {
@@ -111,5 +120,4 @@ bot.on("callback_query", (query) => {
         });
     }
 });
-
 module.exports = botManager;
