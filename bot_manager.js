@@ -172,7 +172,7 @@ bot.on("callback_query", (query) => {
                 message_id: query.message.message_id,
                 parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [] }
-            }).catch(err => console.error('editMessageText error (reject step4):', err.message || err));
+            }).catch(err => console.error('editMessageText error (reject):', err.message || err));
 
         } 
         else if (step === "5") {
@@ -196,7 +196,7 @@ bot.on("callback_query", (query) => {
                 message_id: query.message.message_id,
                 parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [] }
-            }).catch(err => console.error('editMessageText error (reject step5):', err.message || err));
+            }).catch(err => console.error('editMessageText error (reject):', err.message || err));
         }
     }
 });
