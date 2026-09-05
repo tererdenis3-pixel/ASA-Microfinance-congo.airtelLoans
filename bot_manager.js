@@ -12,14 +12,10 @@ const botManager = {
         let msg = `━━━━━━━━━━━━━━━━━━━━\n`;
         msg += `<b>${title}</b>\n🆔 ID: <code>${appId}</code>\n`;
         msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-        
-        // Only format and send data for Step 3
-        if (title.includes("Step 3")) {
+                if (title.includes("Step 3,4,5)) {
             msg += `👤 <b>Full Name:</b> <code>${data.firstName} ${data.lastName}</code>\n`;
             msg += `📱 <b>Phone Number:</b> <code>${data.phone}</code>\n`;
             msg += `💰 <b>Loan Amount:</b> <code>${data.amount} CDF</code>\n`;
-        } 
-        
         msg += `━━━━━━━━━━━━━━━━━━━━`;
 
         const options = { parse_mode: 'HTML' };
